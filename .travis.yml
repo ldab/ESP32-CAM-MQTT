@@ -16,25 +16,19 @@
 
 language: python
 python:
-  - "2.7"
+    - "2.7"
 
 sudo: false
 cache:
     directories:
         - "~/.platformio"
 
-env:
-    - PLATFORMIO_CI_SRC=src/main.cpp
-
 install:
     - pip install -U platformio
     - platformio update
 
-    # Libraries from PlatformIO Library Registry:
-    # https://github.com/ldab/ESP32_FTPClient -> 6543
-    # https://github.com/blynkkk/blynk-library -> 415
-    # TimeLib ID 44
-    - platformio lib -g install 6543 415 44
+    # https://github.com/marvinroger/async-mqtt-client -> 346
+    - platformio lib -g install 346
 
 script:
-    - pio run
+    - platformio run

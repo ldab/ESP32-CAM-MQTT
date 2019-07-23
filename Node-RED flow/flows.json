@@ -1,0 +1,316 @@
+[
+    {
+        "id": "d7145a3a.b21bd8",
+        "type": "tab",
+        "label": "Flow 1",
+        "disabled": false,
+        "info": ""
+    },
+    {
+        "id": "fdb86ba4.da2bc8",
+        "type": "ui_group",
+        "z": "",
+        "name": "Default",
+        "tab": "468518e3.3d1f8",
+        "disp": false,
+        "width": "6",
+        "collapse": false
+    },
+    {
+        "id": "fec2c536.0f1",
+        "type": "mqtt-broker",
+        "z": "",
+        "name": "CloudMQTT",
+        "broker": "m24.cloudmqtt.com",
+        "port": "17603",
+        "clientid": "",
+        "usetls": false,
+        "compatmode": true,
+        "keepalive": "60",
+        "cleansession": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthPayload": "",
+        "closeTopic": "",
+        "closeQos": "0",
+        "closePayload": "",
+        "willTopic": "",
+        "willQos": "0",
+        "willPayload": ""
+    },
+    {
+        "id": "c1a3f969.3612b8",
+        "type": "ui_base",
+        "theme": {
+            "name": "theme-light",
+            "lightTheme": {
+                "default": "#0094CE",
+                "baseColor": "#000000",
+                "baseFont": "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Oxygen-Sans,Ubuntu,Cantarell,Helvetica Neue,sans-serif",
+                "edited": true,
+                "reset": false
+            },
+            "darkTheme": {
+                "default": "#097479",
+                "baseColor": "#097479",
+                "baseFont": "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Oxygen-Sans,Ubuntu,Cantarell,Helvetica Neue,sans-serif",
+                "edited": false
+            },
+            "customTheme": {
+                "name": "Untitled Theme 1",
+                "default": "#4B7930",
+                "baseColor": "#4B7930",
+                "baseFont": "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Oxygen-Sans,Ubuntu,Cantarell,Helvetica Neue,sans-serif"
+            },
+            "themeState": {
+                "base-color": {
+                    "default": "#0094CE",
+                    "value": "#000000",
+                    "edited": true
+                },
+                "page-titlebar-backgroundColor": {
+                    "value": "#000000",
+                    "edited": false
+                },
+                "page-backgroundColor": {
+                    "value": "#fafafa",
+                    "edited": false
+                },
+                "page-sidebar-backgroundColor": {
+                    "value": "#000000",
+                    "edited": false
+                },
+                "group-textColor": {
+                    "value": "#262626",
+                    "edited": false
+                },
+                "group-borderColor": {
+                    "value": "#ffffff",
+                    "edited": false
+                },
+                "group-backgroundColor": {
+                    "value": "#ffffff",
+                    "edited": false
+                },
+                "widget-textColor": {
+                    "value": "#111111",
+                    "edited": false
+                },
+                "widget-backgroundColor": {
+                    "value": "#000000",
+                    "edited": false
+                },
+                "widget-borderColor": {
+                    "value": "#ffffff",
+                    "edited": false
+                },
+                "base-font": {
+                    "value": "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Oxygen-Sans,Ubuntu,Cantarell,Helvetica Neue,sans-serif"
+                }
+            },
+            "angularTheme": {
+                "primary": "indigo",
+                "accents": "blue",
+                "warn": "red",
+                "background": "grey"
+            }
+        },
+        "site": {
+            "name": "ESP32-CAM MQTT Picture",
+            "hideToolbar": "true",
+            "allowSwipe": "false",
+            "lockMenu": "false",
+            "allowTempTheme": "true",
+            "dateFormat": "DD/MM/YYYY",
+            "sizes": {
+                "sx": 48,
+                "sy": 48,
+                "gx": 6,
+                "gy": 6,
+                "cx": 6,
+                "cy": 6,
+                "px": 0,
+                "py": 0
+            }
+        }
+    },
+    {
+        "id": "468518e3.3d1f8",
+        "type": "ui_tab",
+        "z": "",
+        "name": "Home",
+        "icon": "dashboard",
+        "disabled": false,
+        "hidden": false
+    },
+    {
+        "id": "cf685ef5.2cf108",
+        "type": "ui_template",
+        "z": "d7145a3a.b21bd8",
+        "group": "fdb86ba4.da2bc8",
+        "name": "",
+        "order": 0,
+        "width": "6",
+        "height": "6",
+        "format": "\n<img src={{msg.payload}} width=\"100%\"> ",
+        "storeOutMessages": false,
+        "fwdInMessages": true,
+        "templateScope": "local",
+        "x": 940,
+        "y": 260,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "e98f28fc.b4cfa8",
+        "type": "mqtt in",
+        "z": "d7145a3a.b21bd8",
+        "name": "",
+        "topic": "img",
+        "qos": "0",
+        "datatype": "auto",
+        "broker": "fec2c536.0f1",
+        "x": 110,
+        "y": 160,
+        "wires": [
+            [
+                "ea871940.f431d8",
+                "ebfdb181.62c688"
+            ]
+        ]
+    },
+    {
+        "id": "481cec8a.08f474",
+        "type": "cloudant out",
+        "z": "d7145a3a.b21bd8",
+        "name": "",
+        "cloudant": "",
+        "database": "img",
+        "service": "jagua-cloudantNoSQLDB",
+        "payonly": false,
+        "operation": "insert",
+        "x": 950,
+        "y": 160,
+        "wires": []
+    },
+    {
+        "id": "ea871940.f431d8",
+        "type": "change",
+        "z": "d7145a3a.b21bd8",
+        "name": "Add Timestamp",
+        "rules": [
+            {
+                "t": "set",
+                "p": "time",
+                "pt": "msg",
+                "to": "",
+                "tot": "date"
+            },
+            {
+                "t": "delete",
+                "p": "topic",
+                "pt": "msg"
+            },
+            {
+                "t": "delete",
+                "p": "_msgid",
+                "pt": "msg"
+            },
+            {
+                "t": "delete",
+                "p": "qos",
+                "pt": "msg"
+            },
+            {
+                "t": "delete",
+                "p": "retain",
+                "pt": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 560,
+        "y": 160,
+        "wires": [
+            [
+                "481cec8a.08f474"
+            ]
+        ]
+    },
+    {
+        "id": "7721e50d.a56344",
+        "type": "debug",
+        "z": "d7145a3a.b21bd8",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "x": 934.4000244140625,
+        "y": 353.8000030517578,
+        "wires": []
+    },
+    {
+        "id": "70274aa4.171bb4",
+        "type": "cloudant in",
+        "z": "d7145a3a.b21bd8",
+        "name": "Get from DB",
+        "cloudant": "",
+        "database": "img",
+        "service": "jagua-cloudantNoSQLDB",
+        "search": "_all_",
+        "design": "",
+        "index": "",
+        "x": 410,
+        "y": 260,
+        "wires": [
+            [
+                "35f24e38.c7fb4a"
+            ]
+        ]
+    },
+    {
+        "id": "ebfdb181.62c688",
+        "type": "trigger",
+        "z": "d7145a3a.b21bd8",
+        "op1": "",
+        "op2": "true",
+        "op1type": "nul",
+        "op2type": "bool",
+        "duration": "1",
+        "extend": true,
+        "units": "s",
+        "reset": "",
+        "bytopic": "all",
+        "name": "",
+        "x": 240,
+        "y": 260,
+        "wires": [
+            [
+                "70274aa4.171bb4"
+            ]
+        ]
+    },
+    {
+        "id": "35f24e38.c7fb4a",
+        "type": "function",
+        "z": "d7145a3a.b21bd8",
+        "name": "Get last Picture and Convert to Base64",
+        "func": "// Sort cloudant data by epoch time ascending\nmsg.payload.sort((a, b) => (a.time > b.time) ? 1 : -1);\n\nlet pic = msg.payload[msg.payload.length-1].payload;\n\nlet buff = new Buffer(pic);\nlet base64pic = buff.toString('base64');\n\nbase64pic = \"data:image/png;base64,\" + base64pic;\n\nmsg = { payload : base64pic };\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 679,
+        "y": 260,
+        "wires": [
+            [
+                "cf685ef5.2cf108",
+                "7721e50d.a56344"
+            ]
+        ]
+    }
+]

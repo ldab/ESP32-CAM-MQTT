@@ -1,22 +1,27 @@
-# ESP32-CAM-Picture-Sharing
-ESP32-CAM remote image access via FTP. Take pictures with ESP32 and upload it via FTP making it accessible for the outisde network.
+# ESP32-CAM-MQTT
+ESP32-CAM remote image access via HTTP. Take pictures with ESP32 and upload it via MQTT making it accessible for the outisde network on Node_RED
 
-[![GitHub version](https://img.shields.io/github/release/ldab/ESP32-CAM-Picture-Sharing.svg)](https://github.com/ldab/ESP32-CAM-Picture-Sharing/releases/latest)
-[![Build Status](https://travis-ci.org/ldab/ESP32-CAM-Picture-Sharing.svg?branch=master)](https://travis-ci.org/ldab/ESP32-CAM-Picture-Sharing)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/ldab/ESP32-CAM-Picture-Sharing/blob/master/LICENSE)
+[![GitHub version](https://img.shields.io/github/release/ldab/ESP32-CAM-MQTT.svg)](https://github.com/ldab/ESP32-CAM-MQTT/releases/latest)
+[![Build Status](https://travis-ci.org/ldab/ESP32-CAM-MQTT.svg?branch=master)](https://travis-ci.org/ldab/ESP32-CAM-MQTT)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/ldab/ESP32-CAM-MQTT/blob/master/LICENSE)
 
-[![GitHub last commit](https://img.shields.io/github/last-commit/ldab/ESP32-CAM-Picture-Sharing.svg?style=social)](https://github.com/ldab/ESP32-CAM-Picture-Sharing)
+[![GitHub last commit](https://img.shields.io/github/last-commit/ldab/ESP32-CAM-MQTT.svg?style=social)](https://github.com/ldab/ESP32-CAM-MQTT)
 
 [![ESP32-CAM](./pics/esp32cam.jpg)](https://www.aliexpress.com/item/32963016501.html?spm=a2g0s.9042311.0.0.4acb4c4dqzOcdx)
+
+## Limitations
+
+* The MQTT buffer size is limited by the library, thus the max picture size `_client.space() == 5744` -> Play around with the resolution and find the suitable one `FRAMESIZE_QVGA`
+  * https://github.com/marvinroger/async-mqtt-client/issues/74
 
 ## Sumary
 
 1. [PlatformIO](/README.md#PlatformIO)
 2. [Flashing](/README.md#Flashing)
 3. [Hardware](/README.md#Hardware)
-4. [Free Website Hosting](/README.md#Free-Website-Hosting)
-5. [Blynk](/README.md#Blynk)
-6. [Node-RED](/README.md#Node-RED)
+4. [MQTT Broker](/README.md#MQTT-Broker)
+5. [IBM Node-RED Hosting](/README.md#IBM-Node-RED-Hosting)
+6. [Node-RED Flow](/README.md#Node-RED-Flow)
 7. [Credits](/README.md#Credits)
 
 ## PlatformIO
@@ -53,55 +58,71 @@ ESP32-CAM remote image access via FTP. Take pictures with ESP32 and upload it vi
 * This board has an [AMS1117](./extras/ds1117.pdf) voltage regulator which "sleep" current is around `6mA`, this is quite a lot if you plan to have your board running on batteries.
 * **TODO!** find an alternative with the same package.
 
-## Free Website Hosting
+## MQTT Broker
 
-* There're plenty of tutorials and examples on how to run the video streming or pictures on your local network while the ESP32 acts as a webserver.
+The MQTT Broker used is [CloudMQTT](https://www.cloudmqtt.com/) they offer Free accounts 😉 that works just fine.
 
-* The idea behind this project is to `upload` the picture via FTP making it available on an URL something like: `www.mysite.com/my_picture.jpg`
+## IBM Node-RED Hosting
 
-* This way you don't need to overload the ESP32, your network remains secure, not open to the world, no port forwarding.
+The process was a bit tedious and took a while to get it properly running as of today (2019/07/23) the information provided on the tutorial had few broken links.
 
-* For this example I uploaded the GitHub Octocat to my [000Webhost](https://www.000webhost.com/) hosted webiste, the file is avalable under: `https://my_user.000webhostapp.com/gallery_gen/XxXxXxXx.jpg`
+[https://nodered.org/docs/platforms/bluemix](https://nodered.org/docs/platforms/bluemix)
 
-```
-  ftp.OpenConnection();
+1. Sign-up/Log in to [https://cloud.ibm.com/](https://cloud.ibm.com/);
+2. Using the top search bar, search for `Node-RED Starter`;
+3. Fill the required fields, `App name`, `Host name`, etc...
+4. Select `Lite` for `SDK for Node.js` and `Cloudant`, those are free, you can upgrade later if required;
+5. Click `Create` at the bottom right, the circle will spin, take few seconds;
+6. You will be redirected to the next page and should see `running` when everything is ready for use:
 
-  // Create the new file and send the image
-  ftp.InitFile("Type I");
-  ftp.ChangeWorkDir("/public_html/zyro/gallery_gen/");
-  ftp.NewFile("octocat.jpg");
-  ftp.WriteData( octocat_pic, sizeof(octocat_pic) );
-  ftp.CloseFile();
+![IBM Cloud Start](./pics/ibmcloud.png)
 
-  ftp.CloseConnection();
-```
+7. Go to your App URL, something like [http://AppName.eu-gb.mybluemix.net](http://AppName.eu-gb.mybluemix.net) and complete the initial set-up;
+8. The Node-Red GUI Flow Editor is available at [http://AppName.eu-gb.mybluemix.net/red](http://AppName.eu-gb.mybluemix.net/red)
 
-### FTP information
+* After installing the Node desbribed below, Your Node-red Dashboard is available at [http://AppName.eu-gb.mybluemix.net/ui](http://AppName.eu-gb.mybluemix.net/ui)
 
-* Your FTP details can be found on the 000webhost control panel once logged on click your site then details.
+## Node-RED Flow
 
-![000webhost](https://www.000webhost.com/forum/uploads/default/original/2X/0/026a3c78b11ca4864452140237eab946a3f2c267.png)
+### Install required nodes
 
-## Blynk App
+* Menu -> Manage Palette -> Install tab. You will need `node-red-dashboard`
 
-* This is a Bonus, as you may want to add it to your altomation project, you can use `Blynk Image Gallery Widget` and just supply it with the URL used by ESP32 from the hardware.
+### Import Node example
 
-```
-// Take a picture and add a time tag to it;
-take_picture( "my_picture_201906170521" );
-upload_FTPpicture();
+* Copy the flow below and import to your Nore-RED available at `yournode.eu-gb.mybluemix.net/red` Import -> Clipboard, paste it.
 
-// And by changing it on Blynk from the hardware will reflect on the App
-Blynk.setProperty(VX, "url", 1, "https://mywebsite/something/my_picture_201906170521.jpg");
-```
+You will find the flow.json [here](./Node-RED%20flow/flows.json).
 
-<img src="./pics/screenshot_blynk.jpg" width="30%"> <img src="./pics/QR.jpg" width="30%"> 
+![Node-RED Flow](./pics/screenshot.png)
 
-## Node-RED
+### Cloudant Credentials for cleaning database
 
-* Another alternative is to send the image via MQTT(???) using cloud brokers as [CloudMQTT](https://www.cloudmqtt.com/) and have the Node-RED subscribed to that topic and saving it to the database and serving the file locally.
+* Generally Cloudant autheticate via IBM cloud therefore we need to create new Credentials and use the username and password for authentication on the `delete inputs on database` node.
 
-* This is a topic for another project, but can be seen briefly [here](https://github.com/ldab/Node-RED-Energy-Harvesting-dashboard)
+![IBM Cloudant Credentials](./pics/credentials.png)
+
+## Node-RED Notification
+
+* Via the `catch` node, you can enable notification, for your phone for example. Below I have quickly show few options:
+
+1. Email
+
+  * Use the `email` output, configured with your email provider info;
+
+2. PushSafer
+
+  * Offers several customizations, sound, vibration, icons, etc:
+  * GET request url: `https://www.pushsafer.com/api?k=YOURKEY&c=%23ff0000&v=1&a=1&m={{payload}}`
+
+5. Twilio SMS
+
+  * SMS API, built-in to the Node-RED and IBM example;
+
+6. IFTT
+
+  * If this than that, with android and iOS apps can be accesible via webhooks;
+  * GET `https://maker.ifttt.com/trigger/YOUR_EVENT/with/key/YOUR_KEY?value1=MESSAGE`
 
 ## Credits
 

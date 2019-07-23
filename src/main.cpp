@@ -1,48 +1,55 @@
 /******************************************************************************
+ESP32-CAM remote image access via HTTP. Take pictures with ESP32 and upload it via MQTT making it accessible for the outisde network on Node_RED
 
-ESP32-CAM remote image access via FTP. Take pictures with ESP32 and upload it via FTP making it accessible for the outisde network. 
 Leonardo Bispo
 July - 2019
-https://github.com/ldab/ESP32-CAM-Picture-Sharing
-
+https://github.com/ldab/ESP32-CAM-MQTT
 Distributed as-is; no warranty is given.
-
 ******************************************************************************/
-#include "Arduino.h"
 
-/* Comment this out to disable prints and save space */
-//#define BLYNK_DEBUG
-//#define BLYNK_PRINT Serial
-#define BLYNK_NO_BUILTIN
-#define BLYNK_NO_FLOAT
+#include <Arduino.h>
 
 // Enable Debug interface and serial prints over UART1
 #define DEGUB_ESP
 
-// Blynk related Libs
+// WiFi libraries
 #include <WiFi.h>
-#include <WiFiClient.h>
-#include <BlynkSimpleEsp32.h>
-#include <TimeLib.h>
-#include <WidgetRTC.h>
+#include "esp_wifi.h"
 
+// MQTT
+extern "C" {
+	#include "freertos/FreeRTOS.h"
+	#include "freertos/timers.h"
+}
+
+#include <AsyncMqttClient.h>
+
+// Camera related
 #include "esp_camera.h"
 #include "esp_timer.h"
 #include "img_converters.h"
 
-#include "esp_http_server.h"
 #include "fb_gfx.h"
 #include "fd_forward.h"
 #include "fr_forward.h"
-//#include "soc/soc.h"           //disable brownout problems
-//#include "soc/rtc_cntl_reg.h"  //disable brownout problems
 #include "dl_lib.h"
 
 // Connection timeout;
 #define CON_TIMEOUT   10*1000                     // milliseconds
 
 // Not using Deep Sleep on PCB because TPL5110 timer takes over.
-#define TIME_TO_SLEEP (uint64_t)60*60*1000*1000   // microseconds
+#define TIME_TO_SLEEP (uint64_t)10*60*1000*1000   // microseconds
+
+// WiFi Credentials
+#define WIFI_SSID     ""
+#define WIFI_PASSWORD ""
+
+// MQTT Broker configuration
+#define MQTT_HOST     "m24.cloudmqtt.com"
+#define MQTT_PORT     666
+#define USERNAME      ""
+#define PASSWORD      ""
+#define TOPIC_PIC     ""
 
 #ifdef DEGUB_ESP
   #define DBG(x) Serial.println(x)
@@ -50,40 +57,70 @@ Distributed as-is; no warranty is given.
   #define DBG(...)
 #endif
 
-// FTP Client Lib
-#include "ESP32_FTPClient.h"
-
-// Go to the Project Settings (nut icon) and get Auth Token in the Blynk App.
-char auth[] = "";
-
-// Your WiFi credentials.
-char ssid[] = "";
-char pass[] = "";
-
-// FTP Server credentials
-char ftp_server[] = "files.000webhost.com";
-char ftp_user[]   = "";
-char ftp_pass[]   = "";
-
 // Camera buffer, URL and picture name
 camera_fb_t *fb = NULL;
-String pic_name = "";
-String pic_url  = "";
 
-// Variable marked with this attribute will keep its value during a deep sleep / wake cycle.
-RTC_DATA_ATTR uint64_t bootCount = 0;
+// MQTT callback
+AsyncMqttClient mqttClient;
+TimerHandle_t   mqttReconnectTimer;
+TimerHandle_t   wifiReconnectTimer;
 
-WidgetRTC rtc;
-ESP32_FTPClient ftp (ftp_server, ftp_user, ftp_pass);
-
-void deep_sleep(void);
-void FTP_upload( void );
+// Create functions prior to calling them as .cpp files are differnt from Arduino .ino
+void connectWiFi( void );
+void connectMQTT( void );
+void deep_sleep ( void );
+bool camera_init(void);
 bool take_picture(void);
 
-BLYNK_CONNECTED()
+void onMqttConnect(bool sessionPresent)
 {
-  // Synchronize time on connection
-  rtc.begin();
+  // Take picture
+  take_picture();
+
+  // Publish picture
+  const char* pic_buf = (const char*)(fb->buf);
+  size_t length = fb->len;
+  uint16_t packetIdPubTemp = mqttClient.publish( TOPIC_PIC, 0, false, pic_buf, length );
+  
+  DBG("buffer is " + String(length) + " bytes");
+
+  // No delay result in no message sent.
+  delay(200);
+
+  if( !packetIdPubTemp  )
+  {
+    DBG( "Sending Failed! err: " + String( packetIdPubTemp ) );
+  }
+  else
+  {
+    DBG("MQTT Publish succesful");
+  }
+  
+  deep_sleep();
+}
+
+bool take_picture()
+{
+  DBG("Taking picture now");
+
+  fb = esp_camera_fb_get();  
+  if(!fb)
+  {
+    DBG("Camera capture failed");
+    return false;
+  }
+  
+  DBG("Camera capture success");
+
+  return true;
+}
+
+void deep_sleep()
+{
+  DBG("Going to sleep after: " + String( millis() ) + "ms");
+  Serial.flush();
+
+  esp_deep_sleep_start();
 }
 
 void setup()
@@ -93,8 +130,30 @@ void setup()
   Serial.setDebugOutput(true);
 #endif
 
-  //WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); //disable brownout detector
+  // COnfigure MQTT Broker and callback
+  mqttReconnectTimer = xTimerCreate("mqttTimer", pdMS_TO_TICKS(2000), pdFALSE, (void*)0, reinterpret_cast<TimerCallbackFunction_t>(connectMQTT));
+  mqttClient.setCredentials( USERNAME, PASSWORD );
+  mqttClient.onConnect (onMqttConnect );
+  mqttClient.setServer( MQTT_HOST, MQTT_PORT );
 
+  // Initialize and configure camera
+  camera_init();
+  
+  // Enable timer wakeup for ESP32 sleep
+  esp_sleep_enable_timer_wakeup( TIME_TO_SLEEP );
+
+  connectWiFi();
+  connectMQTT();
+
+}
+
+void loop() {
+  // put your main code here, to run repeatedly:
+}
+
+bool camera_init()
+{
+  // IF USING A DIFFERENT BOARD, NEED DIFFERENT PINs
   camera_config_t config;
   config.ledc_channel = LEDC_CHANNEL_0;
   config.ledc_timer   = LEDC_TIMER_0;
@@ -118,9 +177,9 @@ void setup()
   config.pixel_format = PIXFORMAT_JPEG;
 
   //init with high specs to pre-allocate larger buffers
-  config.frame_size = FRAMESIZE_XGA; // set picture size, FRAMESIZE_XGA = 1024x768
-  config.jpeg_quality = 10;          // quality of JPEG output. 0-63 lower means higher quality
-  config.fb_count = 2;
+  config.frame_size   = FRAMESIZE_QQVGA; // set picture size, FRAMESIZE_QQVGA = 160x120
+  config.jpeg_quality = 10;            // quality of JPEG output. 0-63 lower means higher quality
+  config.fb_count     = 2;
 
   // camera init
   esp_err_t err = esp_camera_init(&config);
@@ -128,7 +187,7 @@ void setup()
   {
     Serial.print("Camera init failed with error 0x%x");
     DBG(err);
-    return;
+    return false;
   }
 
   // Change extra settings if required
@@ -136,111 +195,51 @@ void setup()
   //s->set_vflip(s, 0);       //flip it back
   //s->set_brightness(s, 1);  //up the blightness just a bit
   //s->set_saturation(s, -2); //lower the saturation
+
+  else
+  {
+    return true;
+  }
   
-  // Enable timer wakeup for ESP32 sleep
-  esp_sleep_enable_timer_wakeup( TIME_TO_SLEEP );
+}
 
-  WiFi.begin( ssid, pass );
-  DBG("\nConnecting to WiFi");
+void connectWiFi() {
+  DBG("Connecting to Wi-Fi...");
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
-  while ( WiFi.status() != WL_CONNECTED && millis() < CON_TIMEOUT )
+  while (WiFi.status() != WL_CONNECTED && millis() < CON_TIMEOUT)
   {
     delay(500);
     Serial.print(".");
   }
 
-  if( !WiFi.isConnected() )
+  if( WiFi.status() != WL_CONNECTED )
   {
-    DBG("Failed to connect to WiFi, going to sleep");
+    DBG("Failed to connect to WiFi");
+    delay( 600 );
     deep_sleep();
   }
 
-  DBG("");
-  DBG("WiFi connected");
-  DBG( WiFi.localIP() );
-
-  Blynk.config( auth );
+  DBG();
+  DBG("IP address: ");
+  DBG(WiFi.localIP());
 
 }
 
-void loop()
-{
+void connectMQTT() {
+  DBG("Connecting to MQTT...");
+  mqttClient.connect();
 
-  Blynk.run();
-
-  if(Blynk.connected() && timeStatus() == 2)
+  while( !mqttClient.connected() && millis() < CON_TIMEOUT )
   {
-      // Take picture
-    if( take_picture() )
-    {
-      FTP_upload();
-
-      deep_sleep();
-    }
-
-    else
-    {
-      DBG("Capture failed, sleeping");
-      deep_sleep();
-    }
+    delay(250);
+    Serial.print(".");
   }
 
-  if( millis() > CON_TIMEOUT)
+  if( !mqttClient.connected() )
   {
-    DBG("Timeout");
-
+    DBG("Failed to connect to MQTT Broker");
     deep_sleep();
   }
-
-}
-
-void deep_sleep()
-{
-  DBG("Going to sleep after: " + String( millis() ) + "ms");
-  Serial.flush();
-
-  esp_deep_sleep_start();
-}
-
-bool take_picture()
-{
-  DBG("Taking picture now");
-
-  fb = esp_camera_fb_get();  
-  if(!fb)
-  {
-    DBG("Camera capture failed");
-    return false;
-  }
-  
-  // Rename the picture with the time string
-  pic_name += String( now() ) + ".jpg";
-  DBG("Camera capture success, saved as:");
-  DBG( pic_name );
-
-  return true;
-}
-
-void FTP_upload()
-{
-  DBG("Uploading via FTP");
-  ftp.OpenConnection();
-  
-  //Create a file and write the image data to it;
-  ftp.InitFile("Type I");
-  ftp.ChangeWorkDir("/public_html/zyro/gallery_gen/"); // change it to reflect your directory
-  const char *f_name = pic_name.c_str();
-  ftp.NewFile( f_name );
-  ftp.WriteData(fb->buf, fb->len);
-  ftp.CloseFile();
-
-  // Change URL on Blynk App
-  pic_url += pic_name;
-  DBG("Change App URL to: ");
-  DBG( pic_url );
-  Blynk.setProperty(V0, "url", 1, pic_url);
-
-  // Breath, withouth delay URL failed to update.
-  delay(100);
 
 }
