@@ -1,6 +1,7 @@
 # ESP32-CAM-MQTT
 ESP32-CAM remote image access via HTTP. Take pictures with ESP32 and upload it via MQTT making it accessible for the outisde network on Node_RED
 
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/ef1949a638f34e029c5ab21dae87488c)](https://app.codacy.com/app/ldab/ESP32-CAM-MQTT?utm_source=github.com&utm_medium=referral&utm_content=ldab/ESP32-CAM-MQTT&utm_campaign=Badge_Grade_Dashboard)
 [![GitHub version](https://img.shields.io/github/release/ldab/ESP32-CAM-MQTT.svg)](https://github.com/ldab/ESP32-CAM-MQTT/releases/latest)
 [![Build Status](https://travis-ci.org/ldab/ESP32-CAM-MQTT.svg?branch=master)](https://travis-ci.org/ldab/ESP32-CAM-MQTT)
 [![CodeFactor](https://www.codefactor.io/repository/github/ldab/esp32-cam-mqtt/badge/master)](https://www.codefactor.io/repository/github/ldab/esp32-cam-mqtt/overview/master)
