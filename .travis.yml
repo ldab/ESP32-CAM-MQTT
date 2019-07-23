@@ -1,0 +1,40 @@
+# Continuous Integration (CI) is the practice, in software
+# engineering, of merging all developer working copies with a shared mainline
+# several times a day < https://docs.platformio.org/page/ci/index.html >
+#
+# Documentation:
+#
+# * Travis CI Embedded Builds with PlatformIO
+#   < https://docs.travis-ci.com/user/integration/platformio/ >
+#
+# * PlatformIO integration with Travis CI
+#   < https://docs.platformio.org/page/ci/travis.html >
+#
+# * User Guide for `platformio ci` command
+#   < https://docs.platformio.org/page/userguide/cmd_ci.html >
+#
+
+language: python
+python:
+  - "2.7"
+
+sudo: false
+cache:
+    directories:
+        - "~/.platformio"
+
+env:
+    - PLATFORMIO_CI_SRC=src/main.cpp
+
+install:
+    - pip install -U platformio
+    - platformio update
+
+    # Libraries from PlatformIO Library Registry:
+    # https://github.com/ldab/ESP32_FTPClient -> 6543
+    # https://github.com/blynkkk/blynk-library -> 415
+    # TimeLib ID 44
+    - platformio lib -g install 6543 415 44
+
+script:
+    - pio run
