@@ -130,3 +130,24 @@ You will find the flow.json [here](./Node-RED%20flow/flows.json).
 GitHub Shields and Badges created with [Shields.io](https://github.com/badges/shields/)
 
 GitHub ESP32 camera [example](https://github.com/espressif/arduino-esp32/tree/master/libraries/ESP32/examples/Camera/CameraWebServer)
+# include "base64.hpp"
+# include "Arduino.h"
+
+void setup()
+{
+  Serial.begin(115200);
+  Serial.println("============START=============");
+}
+
+void loop()
+{
+  unsigned char binary[] = {133, 44, 117, 26, 1, 15};
+  unsigned char base64[29]; // 8 bytes for output + 1 for null terminator
+
+  unsigned int base64_length = encode_base64(binary, 6, base64);
+
+  printf("%d\n", base64_length); // Prints "8"
+  printf((char *)base64);        // Prints "hfR1zrLD"
+
+  delay(2000);
+}
